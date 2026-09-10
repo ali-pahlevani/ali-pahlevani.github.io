@@ -9,8 +9,8 @@ Live at **https://ali-pahlevani.github.io/**
 A single static page with no build step and no dependencies. It only needs a browser.
 
 - **Hero:** a live SLAM simulation on a `<canvas>`. A robot explores a randomly generated floor plan, raycasts a simulated lidar, builds an occupancy grid, records a pose graph with loop closures, and drives to frontiers. Click or tap the map to set a navigation goal (Dijkstra path planning on the known map).
-- **About, Experience, Projects, Skills, Contact**, with scroll-aware navigation, 18 projects with per-project image sliders, filters, live GitHub star counts, and copy-to-clipboard for email.
-- **Motion:** a trail that draws down the page as you scroll with a waypoint per section, lidar-sweep heading reveals, count-ups, card tilt and parallax, a live scan-matching animation on the GenZ-ICP tile, a faint grid that scans around the cursor, and the robot arriving at a goal in Contact.
+- **About, Experience, Projects, Skills, Contact**, with scroll-aware navigation, 16 projects with per-project image sliders, filters, live GitHub star counts, and copy-to-clipboard for email.
+- **Motion:** a trail that draws down the page as you scroll with a waypoint per section, lidar-sweep heading reveals, count-ups, card tilt and parallax, a faint grid that scans around the cursor, a sphere in place of the mouse pointer, and the robot arriving at a goal in Contact.
 - **One motion switch:** the hero's pause button stops everything that moves on its own, and the choice is remembered. Everything is off by default for visitors who ask for reduced motion.
 
 ```

@@ -7,10 +7,8 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const Motion = window.APMotion || { enabled: true, reduced: false, onChange: () => () => {} };
-  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
   const ACCENT = 'rgba(162, 119, 255';
   const SPARK = 'rgba(255, 194, 75';
-  const TEXT = 'rgba(242, 236, 255';
 
   /* ==========================================================================
      Project galleries
@@ -169,11 +167,7 @@
       listImages(mount.dataset.gallery, mount.dataset.galleryTitle || 'Project')
         .then((images) => {
           if (images.length) {
-            // Real pictures replace whatever placeholder the slot holds (the ICP tile).
-            if (mount.children.length) {
-              mount.innerHTML = '';
-              mount.classList.remove('project__media--icp');
-            }
+            if (mount.children.length) mount.innerHTML = ''; // replace any placeholder
             buildGallery(mount, images);
           } else if (!mount.children.length) {
             mount.classList.add('is-empty');
@@ -343,147 +337,26 @@
      Card tilt
      ========================================================================== */
 
-  if (finePointer.matches) {
-    $$('.project__media').forEach((media) => {
-      media.addEventListener('pointermove', (e) => {
-        if (!Motion.enabled) return;
-        const rect = media.getBoundingClientRect();
-        const px = (e.clientX - rect.left) / rect.width - 0.5;
-        const py = (e.clientY - rect.top) / rect.height - 0.5;
-        media.style.setProperty('--ry', `${(px * 8).toFixed(2)}deg`);
-        media.style.setProperty('--rx', `${(-py * 8).toFixed(2)}deg`);
-      });
-      media.addEventListener('pointerleave', () => {
-        media.style.setProperty('--ry', '0deg');
-        media.style.setProperty('--rx', '0deg');
-      });
+  $$('.project__media').forEach((media) => {
+    media.addEventListener('pointermove', (e) => {
+      if (!Motion.enabled || e.pointerType !== 'mouse') return;
+      const rect = media.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      media.style.setProperty('--ry', `${(px * 8).toFixed(2)}deg`);
+      media.style.setProperty('--rx', `${(-py * 8).toFixed(2)}deg`);
     });
-  }
-
-  /* ==========================================================================
-     GenZ-ICP tile: two point clouds converging, the way scan matching works
-     ========================================================================== */
-
-  function initIcp() {
-    const canvas = $('[data-icp]');
-    if (!canvas || !canvas.getContext) return;
-    const ctx = canvas.getContext('2d');
-    let dpr = 1; let w = 0; let h = 0;
-    let target = []; let source = [];
-    let pose = { x: 0, y: 0, th: 0 };
-    let raf = 0; let running = false; let visible = false;
-    let t = 0;
-
-    function shape(n) {
-      // A room outline: three walls and a pillar, the sort of thing a lidar sees.
-      const pts = [];
-      for (let i = 0; i < n; i++) {
-        const u = i / n;
-        if (u < 0.3) pts.push({ x: -0.8 + (u / 0.3) * 1.6, y: -0.55 });
-        else if (u < 0.6) pts.push({ x: 0.8, y: -0.55 + ((u - 0.3) / 0.3) * 1.1 });
-        else if (u < 0.85) pts.push({ x: 0.8 - ((u - 0.6) / 0.25) * 1.6, y: 0.55 });
-        else {
-          const a = ((u - 0.85) / 0.15) * Math.PI * 2;
-          pts.push({ x: -0.15 + Math.cos(a) * 0.18, y: Math.sin(a) * 0.18 });
-        }
-      }
-      return pts.map((p) => ({ x: p.x + (Math.random() - 0.5) * 0.02, y: p.y + (Math.random() - 0.5) * 0.02 }));
-    }
-
-    function reset() {
-      target = shape(150);
-      pose = { x: 0.34, y: 0.2, th: 0.5 };
-      t = 0;
-    }
-
-    function project() {
-      const c = Math.cos(pose.th); const s = Math.sin(pose.th);
-      source = target.map((p) => ({ x: p.x * c - p.y * s + pose.x, y: p.x * s + p.y * c + pose.y }));
-    }
-
-    function draw() {
-      const scale = Math.min(w, h) * 0.42;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      ctx.save();
-      ctx.translate(w * 0.5, h * 0.42);
-
-      ctx.fillStyle = `${ACCENT}, 0.55)`;
-      target.forEach((p) => ctx.fillRect(p.x * scale - 1, p.y * scale - 1, 2, 2));
-      ctx.fillStyle = `${SPARK}, 0.9)`;
-      source.forEach((p) => ctx.fillRect(p.x * scale - 1, p.y * scale - 1, 2, 2));
-
-      // correspondence lines, thinning out as the clouds align
-      const spread = Math.hypot(pose.x, pose.y) + Math.abs(pose.th);
-      if (spread > 0.02) {
-        ctx.strokeStyle = `${TEXT}, ${Math.min(0.18, spread * 0.25).toFixed(3)})`;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        for (let i = 0; i < target.length; i += 6) {
-          ctx.moveTo(target[i].x * scale, target[i].y * scale);
-          ctx.lineTo(source[i].x * scale, source[i].y * scale);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function frame() {
-      raf = 0;
-      if (!running) return;
-      t += 1 / 60;
-      // Gauss-Newton-ish: each iteration removes a fraction of the remaining error.
-      if (t < 4) {
-        const k = 0.045;
-        pose.x -= pose.x * k; pose.y -= pose.y * k; pose.th -= pose.th * k;
-      } else if (t > 5.5) {
-        reset();
-      }
-      project();
-      draw();
-      raf = requestAnimationFrame(frame);
-    }
-
-    function resize() {
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width) return;
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = rect.width; h = rect.height;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      project();
-      draw();
-    }
-
-    function sync() {
-      const should = visible && Motion.enabled && !document.hidden;
-      if (should && !running) { running = true; raf = requestAnimationFrame(frame); }
-      else if (!should && running) { running = false; cancelAnimationFrame(raf); raf = 0; }
-    }
-
-    reset();
-    if (!Motion.enabled) { pose = { x: 0, y: 0, th: 0 }; }
-    resize();
-
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(canvas);
-    } else { visible = true; }
-    if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas);
-    document.addEventListener('visibilitychange', sync);
-    Motion.onChange((enabled) => {
-      if (!enabled) { pose = { x: 0, y: 0, th: 0 }; project(); draw(); }
-      sync();
+    media.addEventListener('pointerleave', () => {
+      media.style.setProperty('--ry', '0deg');
+      media.style.setProperty('--rx', '0deg');
     });
-  }
-
-  initIcp();
+  });
 
   /* ==========================================================================
      Ambient scan: the cursor acts as a lidar over a faint occupancy grid
      ========================================================================== */
 
-  function initScanLayer() {
-    if (!finePointer.matches) return;
+  function buildScanLayer(firstEvent) {
     const canvas = document.createElement('canvas');
     canvas.className = 'scan-layer';
     canvas.setAttribute('aria-hidden', 'true');
@@ -572,9 +445,22 @@
     });
 
     resize();
+    pointer = { x: firstEvent.clientX, y: firstEvent.clientY };
+    wake();
   }
 
-  initScanLayer();
+  // Wait for a real mouse rather than trusting a media query: hybrid laptops
+  // report a coarse pointer, and touch devices never need this at all.
+  function onFirstMouse(fn) {
+    const start = (e) => {
+      if (e.pointerType !== 'mouse') return;
+      window.removeEventListener('pointermove', start);
+      fn(e);
+    };
+    window.addEventListener('pointermove', start, { passive: true });
+  }
+
+  if (!Motion.reduced) onFirstMouse(buildScanLayer);
 
   /* ==========================================================================
      Contact: the robot arrives at its goal, one time, when you reach the end
@@ -685,4 +571,60 @@
   }
 
   initArrival();
+
+  /* ==========================================================================
+     A sphere instead of the arrow pointer
+     ========================================================================== */
+
+  function buildCursor(firstEvent) {
+    const cursor = document.createElement('div');
+    cursor.className = 'cursor';
+    cursor.setAttribute('aria-hidden', 'true');
+    cursor.innerHTML = '<span class="cursor__ring"></span><span class="cursor__ball"></span>';
+    document.body.append(cursor);
+    document.documentElement.classList.add('has-cursor');
+
+    const ring = $('.cursor__ring', cursor);
+    const ball = $('.cursor__ball', cursor);
+    const HOT = 'a, button, summary, label, [role="button"]';
+    let x = 0; let y = 0; let rx = 0; let ry = 0; let raf = 0; let on = false;
+
+    function frame() {
+      raf = 0;
+      // The ring trails the ball slightly, which reads as weight.
+      rx += (x - rx) * 0.2;
+      ry += (y - ry) * 0.2;
+      ring.style.transform = `translate(${rx.toFixed(1)}px, ${ry.toFixed(1)}px)`;
+      ball.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      if (Math.abs(x - rx) > 0.4 || Math.abs(y - ry) > 0.4) raf = requestAnimationFrame(frame);
+    }
+
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      x = e.clientX;
+      y = e.clientY;
+      if (!on) {
+        on = true;
+        rx = x; ry = y;
+        cursor.classList.add('is-on');
+      }
+      cursor.classList.toggle('is-hot', !!e.target.closest?.(HOT));
+      cursor.classList.toggle('is-map', !!e.target.closest?.('[data-slam]'));
+      if (!raf) raf = requestAnimationFrame(frame);
+    }, { passive: true });
+
+    document.addEventListener('pointerdown', () => cursor.classList.add('is-press'));
+    document.addEventListener('pointerup', () => cursor.classList.remove('is-press'));
+    document.addEventListener('mouseleave', () => { on = false; cursor.classList.remove('is-on'); });
+    window.addEventListener('blur', () => { on = false; cursor.classList.remove('is-on'); });
+
+    try {
+      // Place it at the pointer straight away rather than waiting for the next move.
+      window.dispatchEvent(new PointerEvent('pointermove', {
+        pointerType: 'mouse', clientX: firstEvent.clientX, clientY: firstEvent.clientY,
+      }));
+    } catch { /* older browsers: it appears on the next move */ }
+  }
+
+  if (!Motion.reduced) onFirstMouse(buildCursor);
 })();

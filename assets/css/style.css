@@ -518,7 +518,7 @@ p, li { text-wrap: pretty; }
 
 .section {
   position: relative;
-  padding-block: clamp(88px, 11vw, 152px);
+  padding-block: clamp(56px, 6.5vw, 96px);
 }
 
 .section--alt { background: color-mix(in srgb, var(--surface) 86%, transparent); }
@@ -1028,6 +1028,7 @@ p, li { text-wrap: pretty; }
 }
 
 .gallery__dot {
+  position: relative;
   width: 22px;
   height: 4px;
   padding: 0;
@@ -1036,6 +1037,13 @@ p, li { text-wrap: pretty; }
   background: var(--rule-strong);
   cursor: pointer;
   transition: background-color 200ms ease;
+}
+
+/* the dot stays a hairline, but the target it accepts is finger-sized */
+.gallery__dot::after {
+  content: "";
+  position: absolute;
+  inset: -20px -5px;
 }
 .gallery__dot[aria-current="true"] { background: var(--accent); }
 
@@ -1050,36 +1058,6 @@ p, li { text-wrap: pretty; }
 @media (hover: none) {
   .gallery__nav { opacity: 1; }
 }
-
-/* GenZ-ICP tile: live scan-matching animation behind the number */
-.project__media--icp {
-  display: flex;
-  align-items: flex-end;
-  aspect-ratio: 16 / 10;
-  padding: 24px;
-  overflow: hidden;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--surface-2);
-}
-.project__media--icp canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.project__media--icp .stat { position: relative; }
-
-.stat__value {
-  display: block;
-  color: var(--spark);
-  font-family: var(--serif);
-  font-size: clamp(2.5rem, 4.5vw, 3.75rem);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-.stat__label { display: block; margin-top: 6px; color: var(--muted); font-size: 0.9375rem; }
 
 /* ---------- More on GitHub ---------- */
 
@@ -1138,7 +1116,7 @@ p, li { text-wrap: pretty; }
 
 .skills {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 40px clamp(24px, 3vw, 40px);
 }
 
@@ -1285,6 +1263,67 @@ p, li { text-wrap: pretty; }
   border-top: 1px solid var(--rule);
 }
 .site-footer p { margin: 0; }
+
+/* ---------- Custom pointer ----------
+   A sphere with a trailing ring, in place of the arrow. Only ever active when
+   script.js has confirmed a mouse and full motion, so the native cursor is
+   never removed without a replacement. */
+
+.has-cursor,
+.has-cursor * { cursor: none !important; }
+
+.cursor {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.cursor.is-on { opacity: 1; }
+
+.cursor__ball,
+.cursor__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  translate: -50% -50%;
+  will-change: transform;
+}
+
+.cursor__ball {
+  width: 13px;
+  height: 13px;
+  background: radial-gradient(circle at 34% 30%, #fff, var(--accent-bright) 45%, #6f43cc 100%);
+  box-shadow: 0 0 0 1px rgb(23 16 46 / 0.6), 0 0 16px rgb(162 119 255 / 0.75);
+}
+
+.cursor__ring {
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  box-shadow: 0 0 0 1px rgb(23 16 46 / 0.35);
+  transition: width 200ms var(--ease-out), height 200ms var(--ease-out),
+    border-color 200ms ease, background-color 200ms ease;
+}
+
+/* over links, buttons and slider controls */
+.cursor.is-hot .cursor__ring {
+  width: 54px;
+  height: 54px;
+  background: var(--accent-soft);
+  border-color: var(--accent-bright);
+}
+
+/* over the hero map, where a click sets a goal */
+.cursor.is-map .cursor__ring { border-color: var(--spark); width: 44px; height: 44px; }
+.cursor.is-map .cursor__ball {
+  background: radial-gradient(circle at 34% 30%, #fff, var(--spark) 45%, #b07a13 100%);
+  box-shadow: 0 0 0 1px rgb(23 16 46 / 0.6), 0 0 16px rgb(255 194 75 / 0.7);
+}
+
+.cursor.is-press .cursor__ring { width: 24px; height: 24px; }
 
 /* ---------- Reduced motion ---------- */
 

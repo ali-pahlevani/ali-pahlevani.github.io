@@ -275,14 +275,14 @@
       <div class="container">
         <div class="projects__head">
           <h2 class="section-title" id="projects-title" data-reveal="sweep">Projects</h2>
-          <p class="projects__intro" data-reveal><span data-count="18">18</span> projects: open-source ROS&nbsp;2 tools, robots I've built for clients, and research. Star counts load live from GitHub.</p>
+          <p class="projects__intro" data-reveal><span data-count="16">16</span> projects: open-source ROS&nbsp;2 tools, robots I've built for clients, and research. Star counts load live from GitHub.</p>
           <div class="filters" role="group" aria-label="Filter projects" data-reveal>
-            <button class="filter" type="button" data-filter="all" aria-pressed="true">All <span class="filter__count">18</span></button>
-            <button class="filter" type="button" data-filter="slam" aria-pressed="false">SLAM and perception <span class="filter__count">8</span></button>
-            <button class="filter" type="button" data-filter="sim" aria-pressed="false">Simulation <span class="filter__count">7</span></button>
+            <button class="filter" type="button" data-filter="all" aria-pressed="true">All <span class="filter__count">16</span></button>
+            <button class="filter" type="button" data-filter="slam" aria-pressed="false">SLAM and perception <span class="filter__count">7</span></button>
+            <button class="filter" type="button" data-filter="sim" aria-pressed="false">Simulation <span class="filter__count">6</span></button>
             <button class="filter" type="button" data-filter="tools" aria-pressed="false">Developer tools <span class="filter__count">5</span></button>
             <button class="filter" type="button" data-filter="robots" aria-pressed="false">Robots and hardware <span class="filter__count">5</span></button>
-            <button class="filter" type="button" data-filter="research" aria-pressed="false">Research <span class="filter__count">4</span></button>
+            <button class="filter" type="button" data-filter="research" aria-pressed="false">Research <span class="filter__count">3</span></button>
           </div>
           <p class="visually-hidden" aria-live="polite" data-filter-status></p>
         </div>
@@ -433,10 +433,7 @@
           </article>
 
           <article class="project" data-cats="slam" data-reveal>
-            <div class="project__media project__media--icp" data-gallery="genz-icp" data-gallery-title="GenZ-ICP">
-              <canvas data-icp aria-hidden="true"></canvas>
-              <span class="stat"><span class="stat__value">20&ndash;50%</span><span class="stat__label">less runtime for scan matching</span></span>
-            </div>
+            <div class="project__media" data-gallery="genz-icp" data-gallery-title="GenZ-ICP"></div>
             <div class="project__body">
               <h3 class="project__title"><a href="https://github.com/ali-pahlevani/GenZ_ICP_Optimized">GenZ-ICP, optimized</a></h3>
               <p class="project__desc">CPU-side optimization of the robust LiDAR odometry method from IEEE RA-L 2025, cutting total runtime by 20&ndash;50% depending on voxel resolution and cloud size, which is what makes it usable for real-time SLAM.</p>
@@ -478,15 +475,6 @@
             </div>
           </article>
 
-          <article class="project" data-cats="sim" data-reveal>
-            <div class="project__media" data-gallery="forklift-sim" data-gallery-title="Autonomous forklift simulation"></div>
-            <div class="project__body">
-              <h3 class="project__title">Autonomous Forklift, simulation <span class="badge badge--org">SIMOBOTICS</span></h3>
-              <p class="project__desc">The same forklift in ROS&nbsp;2 Humble and Gazebo Classic: SLAM with a SICK 2D LiDAR to build an occupancy grid, autonomous navigation with Nav2, and a Vzense RGB-D camera for pallet detection and handling. A custom web interface allows remote monitoring and control, and an upgrade to modern Gazebo is in progress.</p>
-              <ul class="tags"><li>Gazebo Classic</li><li>Nav2</li><li>RGB-D perception</li><li>Web interface</li></ul>
-            </div>
-          </article>
-
           <article class="project" data-cats="slam" data-reveal>
             <div class="project__media" data-gallery="fastlio2-scpgo" data-gallery-title="Fast-LIO2 with SC-PGO"></div>
             <div class="project__body">
@@ -502,24 +490,6 @@
               <h3 class="project__title">Autonomous 6-wheeled UGV in Isaac Sim <span class="badge badge--org">SLAMbotics</span></h3>
               <p class="project__desc">A six-wheeled unmanned ground vehicle developed in NVIDIA Isaac Sim 4.5, driven differentially and sensing through an IMU and an Intel RealSense D435 depth camera. On ROS&nbsp;2 Humble it maps and localizes with RTAB-Map, then navigates autonomously with Nav2 around both static and dynamic obstacles. Isaac Sim's physics and sensor realism make the results transfer to real hardware.</p>
               <ul class="tags"><li>NVIDIA Isaac Sim</li><li>RTAB-Map</li><li>Nav2</li><li>RealSense D435</li></ul>
-            </div>
-          </article>
-
-          <article class="project" data-cats="slam research" data-reveal>
-            <div class="project__media" data-gallery="kinematic-icp-odometry" data-gallery-title="Odometry comparison"></div>
-            <div class="project__body">
-              <h3 class="project__title">Odometry comparison with Kinematic-ICP <span class="badge badge--org">Shoroue Innocenter</span></h3>
-              <p class="project__desc">A study of how much Kinematic-ICP, which sharpens an existing odometry source using ICP plus the vehicle's kinematic constraints, actually improves accuracy with a 2D LiDAR.</p>
-              <details class="project__more">
-                <summary>What I compared, and the result</summary>
-                <ul>
-                  <li>Wheel and IMU odometry on its own.</li>
-                  <li>Kinematic-ICP with wheel odometry.</li>
-                  <li>Kinematic-ICP with wheel and IMU odometry.</li>
-                </ul>
-                <p>Kinematic-ICP beat wheel and IMU odometry, and adding the IMU to Kinematic-ICP was best of all: combining kinematic constraints with sensor data measurably improves localization. Built on Gazebo, ROS&nbsp;2 Humble and Linorobot2. The repository is coming soon.</p>
-              </details>
-              <ul class="tags"><li>Kinematic-ICP</li><li>2D LiDAR</li><li>Odometry</li><li>Linorobot2</li></ul>
             </div>
           </article>
 
@@ -593,50 +563,36 @@
         <h2 class="section-title" id="skills-title" data-reveal="sweep">Skills</h2>
         <div class="skills">
           <div class="skill-group" data-reveal>
-            <h3 class="skill-group__title">Robotics</h3>
+            <h3 class="skill-group__title">Stacks</h3>
             <ul class="skill-group__list">
-              <li>SLAM (2D and 3D)</li>
-              <li>Sensor fusion</li>
+              <li>SLAM</li>
               <li>Localization</li>
-              <li>Navigation and Nav2</li>
+              <li>Navigation</li>
+              <li>Sensor fusion</li>
               <li>Motion planning</li>
-              <li>Sensor calibration</li>
-              <li>Point cloud processing</li>
+              <li>Optimization</li>
             </ul>
           </div>
           <div class="skill-group" data-reveal>
             <h3 class="skill-group__title">Software</h3>
             <ul class="skill-group__list">
               <li>ROS 2</li>
-              <li>Modern C++</li>
+              <li>C++</li>
               <li>Python</li>
-              <li>OpenCV</li>
               <li>Linux</li>
               <li>Git, Docker, CI/CD</li>
-              <li>Optimization</li>
+              <li>OpenCV</li>
             </ul>
           </div>
           <div class="skill-group" data-reveal>
-            <h3 class="skill-group__title">SLAM frameworks</h3>
+            <h3 class="skill-group__title">Hardware and simulation</h3>
             <ul class="skill-group__list">
-              <li>Fast-LIO2</li>
-              <li>SC-PGO</li>
-              <li>RTAB-Map</li>
-              <li>slam_toolbox</li>
-              <li>GenZ-ICP</li>
-              <li>Kinematic-ICP</li>
-              <li>MSCKF and VIO</li>
-            </ul>
-          </div>
-          <div class="skill-group" data-reveal>
-            <h3 class="skill-group__title">Simulation and hardware</h3>
-            <ul class="skill-group__list">
-              <li>Gazebo and NVIDIA Isaac Sim</li>
-              <li>2D and 3D LiDAR</li>
+              <li>Gazebo, NVIDIA Isaac Sim</li>
+              <li>Jetson, Raspberry Pi, industrial PC</li>
+              <li>2D and 3D LiDARs</li>
               <li>RGB-D and stereo cameras</li>
-              <li>IMU, GPS, wheel encoders</li>
-              <li>CANopen motor control</li>
-              <li>Jetson and Raspberry Pi</li>
+              <li>CANopen and motor control</li>
+              <li>Sensor calibration and integration</li>
             </ul>
           </div>
         </div>
