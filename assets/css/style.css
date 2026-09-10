@@ -1300,8 +1300,8 @@ p, li { text-wrap: pretty; }
 }
 
 .cursor__ring {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   border: 1px solid color-mix(in srgb, var(--accent) 75%, transparent);
   box-shadow: 0 0 0 1px rgb(23 16 46 / 0.35);
   transition: width 200ms var(--ease-out), height 200ms var(--ease-out),
@@ -1310,20 +1310,20 @@ p, li { text-wrap: pretty; }
 
 /* over links, buttons and slider controls */
 .cursor.is-hot .cursor__ring {
-  width: 54px;
-  height: 54px;
+  width: 42px;
+  height: 42px;
   background: var(--accent-soft);
   border-color: var(--accent-bright);
 }
 
 /* over the hero map, where a click sets a goal */
-.cursor.is-map .cursor__ring { border-color: var(--spark); width: 44px; height: 44px; }
+.cursor.is-map .cursor__ring { border-color: var(--spark); width: 34px; height: 34px; }
 .cursor.is-map .cursor__ball {
   background: radial-gradient(circle at 34% 30%, #fff, var(--spark) 45%, #b07a13 100%);
   box-shadow: 0 0 0 1px rgb(23 16 46 / 0.6), 0 0 16px rgb(255 194 75 / 0.7);
 }
 
-.cursor.is-press .cursor__ring { width: 24px; height: 24px; }
+.cursor.is-press .cursor__ring { width: 18px; height: 18px; }
 
 /* ---------- Reduced motion ---------- */
 
