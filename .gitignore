@@ -1,0 +1,23 @@
+# Claude Code and AI tooling (kept local, never published)
+.claude/
+skills/
+CLAUDE.md
+CLAUDE.local.md
+design-system/
+
+# Editors
+.vscode/
+*.code-workspace
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local tooling, in case any gets added later
+node_modules/
+.cache/
+*.log
