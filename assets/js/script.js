@@ -1,12 +1,48 @@
-/* Ali Pahlevani, portfolio: page interactions and the hero SLAM simulation. */
+/* Ali Pahlevani, portfolio: page behaviour and the hero SLAM simulation.
+   Scroll-driven motion and project galleries live in motion.js. */
 (() => {
   'use strict';
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  /* ---------- Header: solid once past the hero, current section ---------- */
+  /* ---------- Shared motion switch ----------
+     One control for everything that moves on its own: the hero map, the ICP
+     tile, the cursor scan and the trail. Starts off when the visitor asks for
+     reduced motion, and remembers a manual choice. */
+
+  const Motion = (() => {
+    const KEY = 'ap-motion';
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const subscribers = new Set();
+    let enabled = !reduce.matches;
+
+    try {
+      const saved = localStorage.getItem(KEY);
+      if (saved === 'off') enabled = false;
+      else if (saved === 'on' && !reduce.matches) enabled = true;
+    } catch { /* storage unavailable */ }
+
+    const api = {
+      get enabled() { return enabled; },
+      get reduced() { return reduce.matches; },
+      set(value, remember) {
+        if (enabled === value) return;
+        enabled = value;
+        if (remember) {
+          try { localStorage.setItem(KEY, value ? 'on' : 'off'); } catch { /* ignore */ }
+        }
+        subscribers.forEach((fn) => fn(enabled));
+      },
+      onChange(fn) { subscribers.add(fn); return () => subscribers.delete(fn); },
+    };
+
+    reduce.addEventListener('change', () => api.set(!reduce.matches, false));
+    window.APMotion = api;
+    return api;
+  })();
+
+  /* ---------- Header: solid past the hero, current section ---------- */
 
   const header = $('[data-header]');
   const hero = $('.hero');
@@ -56,37 +92,107 @@
     window.matchMedia('(min-width: 881px)').addEventListener('change', (e) => { if (e.matches) setMenu(false); });
   }
 
-  /* ---------- Project filters ---------- */
+  /* ---------- Reveals ---------- */
+
+  const revealed = $$('[data-reveal]');
+
+  if (revealed.length && 'IntersectionObserver' in window) {
+    // Stagger siblings so a list arrives as a run, not all at once.
+    const seen = new Map();
+    revealed.forEach((el) => {
+      const index = seen.get(el.parentElement) || 0;
+      seen.set(el.parentElement, index + 1);
+      el.style.setProperty('--reveal-i', Math.min(index, 6));
+    });
+
+    // A sweep heading clips itself to zero width, so it would never register as
+    // visible. Watch its container and mark the heading when that comes into view.
+    const watched = new Map();
+    revealed.forEach((el) => {
+      const proxy = el.dataset.reveal === 'sweep' ? (el.parentElement || el) : el;
+      if (!watched.has(proxy)) watched.set(proxy, []);
+      watched.get(proxy).push(el);
+    });
+
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        (watched.get(entry.target) || [entry.target]).forEach((el) => el.classList.add('is-in'));
+        obs.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
+
+    watched.forEach((_, proxy) => observer.observe(proxy));
+  } else {
+    revealed.forEach((el) => el.classList.add('is-in'));
+  }
+
+  /* ---------- Count-ups ---------- */
+
+  const counted = new WeakSet();
+
+  function countUp(el) {
+    if (counted.has(el)) return;
+    counted.add(el);
+    const target = Number(el.dataset.count);
+    if (!Number.isFinite(target)) return;
+    if (!Motion.enabled) { el.textContent = target.toLocaleString('en-US'); return; }
+
+    const duration = 900;
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      el.textContent = Math.round(target * eased).toLocaleString('en-US');
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  if ('IntersectionObserver' in window) {
+    const counter = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        countUp(entry.target);
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0.6 });
+    $$('[data-count]').forEach((el) => counter.observe(el));
+  }
+
+  /* ---------- Project filters (FLIP so cards slide rather than pop) ---------- */
 
   const filterButtons = $$('[data-filter]');
   const projects = $$('[data-projects] .project');
   const filterStatus = $('[data-filter-status]');
-  let filterToken = 0;
 
   filterButtons.forEach((button) => button.addEventListener('click', () => {
     const filter = button.dataset.filter;
     const matches = (p) => filter === 'all' || p.dataset.cats.split(' ').includes(filter);
-    const token = ++filterToken;
-    let leaving = 0;
+    const animate = Motion.enabled;
 
     filterButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-    projects.forEach((p) => {
-      if (!p.hidden && !matches(p)) { p.classList.add('is-leaving'); leaving++; }
-    });
 
-    setTimeout(() => {
-      if (token !== filterToken) return;
-      const entering = [];
+    const before = new Map(projects.map((p) => [p, p.hidden ? null : p.getBoundingClientRect()]));
+    projects.forEach((p) => { p.hidden = !matches(p); });
+
+    if (animate) {
       projects.forEach((p) => {
-        const show = matches(p);
-        p.classList.remove('is-leaving');
-        if (show && p.hidden) { p.classList.add('is-entering'); entering.push(p); }
-        p.hidden = !show;
+        if (p.hidden) return;
+        const first = before.get(p);
+        const last = p.getBoundingClientRect();
+        if (!first) {
+          p.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 320, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+          return;
+        }
+        const dx = first.left - last.left;
+        const dy = first.top - last.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        p.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+          { duration: 420, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
       });
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        entering.forEach((p) => p.classList.remove('is-entering'));
-      }));
-    }, leaving && !reduceMotion.matches ? 200 : 0);
+    }
 
     const count = projects.filter(matches).length;
     filterStatus.textContent = `Showing ${count} project${count === 1 ? '' : 's'}`;
@@ -154,8 +260,14 @@
       const value = stars[el.dataset.stars];
       if (typeof value === 'number') el.textContent = value.toLocaleString('en-US');
     });
+
     const total = Object.values(stars).reduce((sum, n) => sum + n, 0);
-    if (total > 0) $$('[data-total-stars]').forEach((el) => { el.textContent = total.toLocaleString('en-US'); });
+    if (total > 0) {
+      $$('[data-total-stars]').forEach((el) => {
+        el.dataset.count = String(total);
+        if (counted.has(el)) el.textContent = total.toLocaleString('en-US');
+      });
+    }
   }
 
   ('requestIdleCallback' in window ? requestIdleCallback : (fn) => setTimeout(fn, 1200))(loadStars);
@@ -188,12 +300,13 @@
     };
 
     const COLOR = {
-      free: '#1a3b50',
-      wall: '#e6e9e2',
-      dot: 'rgba(243, 244, 239, 0.09)',
-      fov: 'rgba(243, 244, 239, 0.045)',
-      brass: '#c49a55',
-      ink: '#102a3c',
+      free: '#2a1b52',
+      wall: '#efe9ff',
+      dot: 'rgba(242, 236, 255, 0.09)',
+      fov: 'rgba(162, 119, 255, 0.07)',
+      accent: '#a277ff',
+      spark: '#ffc24b',
+      base: '#17102e',
     };
     const RES = 0.2; // metres per cell, for the readout
     const RAYS = 160;
@@ -232,7 +345,7 @@
     const scanPts = []; const scanHit = [];
     let nodes = []; let loops = []; let lastLoop = -99;
     let ripple = null;
-    let running = false; let paused = false; let visible = true; let staticMode = false;
+    let running = false; let visible = true; let staticMode = false;
     let raf = 0; let last = 0; let hudT = 0; let noticeUntil = 0;
     let lastW = 0; let lastH = 0; let started = false;
 
@@ -265,7 +378,7 @@
       known = new Uint8Array(n);
       infl = new Uint8Array(n);
       reach = new Uint8Array(n);
-      dist = new Float64Array(n); // must match the heap's float64 keys, or the stale-entry check skips live nodes
+      dist = new Float64Array(n); // must match the heap's float64 keys
       parent = new Int32Array(n);
 
       [canvas, mapCanvas, bgCanvas].forEach((c) => {
@@ -690,7 +803,7 @@
       ctx.globalAlpha = fade;
       ctx.drawImage(mapCanvas, 0, 0, cssW, cssH);
 
-      // Lidar field of view and returns
+      // Lidar field of view, with returns in gold
       if (scanPts.length) {
         ctx.beginPath();
         ctx.moveTo(scanPts[0] * cs, scanPts[1] * cs);
@@ -698,7 +811,7 @@
         ctx.closePath();
         ctx.fillStyle = COLOR.fov;
         ctx.fill();
-        ctx.fillStyle = COLOR.brass;
+        ctx.fillStyle = COLOR.spark;
         for (let k = 0, h = 0; k < scanPts.length; k += 2, h++) {
           if (scanHit[h]) ctx.fillRect(scanPts[k] * cs - 1.25, scanPts[k + 1] * cs - 1.25, 2.5, 2.5);
         }
@@ -706,25 +819,25 @@
 
       // Pose graph: trajectory, loop closures, nodes
       ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(196, 154, 85, 0.45)';
+      ctx.strokeStyle = 'rgba(162, 119, 255, 0.5)';
       ctx.beginPath();
       nodes.forEach((n, k) => (k ? ctx.lineTo(n.x * cs, n.y * cs) : ctx.moveTo(n.x * cs, n.y * cs)));
       ctx.stroke();
       if (loops.length) {
         ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(243, 244, 239, 0.55)';
+        ctx.strokeStyle = 'rgba(255, 194, 75, 0.5)';
         ctx.beginPath();
         loops.forEach(([a, b]) => { ctx.moveTo(nodes[a].x * cs, nodes[a].y * cs); ctx.lineTo(nodes[b].x * cs, nodes[b].y * cs); });
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      ctx.fillStyle = COLOR.brass;
+      ctx.fillStyle = COLOR.accent;
       nodes.forEach((n) => ctx.fillRect(n.x * cs - 1.5, n.y * cs - 1.5, 3, 3));
 
       // Planned path
       if (path) {
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = 'rgba(196, 154, 85, 0.85)';
+        ctx.strokeStyle = 'rgba(162, 119, 255, 0.9)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(robot.x * cs, robot.y * cs);
@@ -736,7 +849,8 @@
       // User goal
       if ((mode === 'goal' || mode === 'arrived') && goalIdx >= 0) {
         const gx = cellX(goalIdx) * cs; const gy = cellY(goalIdx) * cs;
-        ctx.strokeStyle = COLOR.brass;
+        ctx.strokeStyle = COLOR.spark;
+        ctx.fillStyle = COLOR.spark;
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(gx, gy, cs * 1.1, 0, Math.PI * 2); ctx.stroke();
         ctx.beginPath(); ctx.arc(gx, gy, 2.5, 0, Math.PI * 2); ctx.fill();
@@ -748,7 +862,7 @@
         if (age >= 1) {
           ripple = null;
         } else {
-          ctx.strokeStyle = ripple.ok ? `rgba(196, 154, 85, ${1 - age})` : `rgba(243, 244, 239, ${0.8 * (1 - age)})`;
+          ctx.strokeStyle = ripple.ok ? `rgba(162, 119, 255, ${1 - age})` : `rgba(242, 236, 255, ${0.8 * (1 - age)})`;
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.arc(ripple.x, ripple.y, 6 + age * 26, 0, Math.PI * 2); ctx.stroke();
         }
@@ -759,10 +873,10 @@
       ctx.save();
       ctx.translate(robot.x * cs, robot.y * cs);
       ctx.rotate(robot.th);
-      ctx.fillStyle = 'rgba(196, 154, 85, 0.16)';
+      ctx.fillStyle = 'rgba(162, 119, 255, 0.18)';
       ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = COLOR.brass;
-      ctx.strokeStyle = COLOR.ink;
+      ctx.fillStyle = COLOR.accent;
+      ctx.strokeStyle = COLOR.base;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(r * 1.35, 0);
@@ -794,7 +908,7 @@
       if (performance.now() < noticeUntil) return;
       let text = MODES[mode];
       if (staticMode) text = mode === 'goal' ? 'Route planned to your goal' : 'Map complete';
-      else if (paused) text = 'Paused';
+      else if (!Motion.enabled) text = 'Paused';
       ui.mode.textContent = text;
     }
 
@@ -818,7 +932,7 @@
     }
 
     function sync() {
-      const should = started && !paused && visible && !document.hidden && !staticMode;
+      const should = started && Motion.enabled && visible && !document.hidden && !staticMode;
       if (should && !running) {
         running = true;
         last = performance.now();
@@ -832,8 +946,7 @@
 
     function start() {
       started = true;
-      staticMode = reduceMotion.matches;
-      ui.toggle.hidden = staticMode;
+      staticMode = Motion.reduced && !Motion.enabled;
       phase = 'run';
       fade = 1;
       setup();
@@ -845,6 +958,7 @@
         updateHud(true);
       } else {
         render();
+        updateHud(true);
       }
       setMode();
       sync();
@@ -886,14 +1000,24 @@
       if (!running) { render(); updateHud(true); }
     });
 
-    ui.toggle.addEventListener('click', () => {
-      paused = !paused;
-      ui.toggle.setAttribute('aria-pressed', String(paused));
-      $('use', ui.toggle).setAttribute('href', paused ? '#i-play' : '#i-pause');
-      $('span', ui.toggle).textContent = paused ? 'Resume animation' : 'Pause animation';
-      setMode();
-      sync();
+    // The hero's pause button is the site-wide motion switch.
+    ui.toggle.addEventListener('click', () => Motion.set(!Motion.enabled, true));
+
+    function syncToggle(enabled) {
+      ui.toggle.setAttribute('aria-pressed', String(!enabled));
+      $('use', ui.toggle).setAttribute('href', enabled ? '#i-pause' : '#i-play');
+      $('span', ui.toggle).textContent = enabled ? 'Pause animation' : 'Resume animation';
+    }
+
+    Motion.onChange((enabled) => {
+      syncToggle(enabled);
+      // Under reduced motion the map is drawn already-explored, so switching
+      // motion on or off means rebuilding it rather than just pausing.
+      if (started && staticMode !== (Motion.reduced && !enabled)) start();
+      else { setMode(); sync(); }
     });
+
+    syncToggle(Motion.enabled);
 
     ui.hint.textContent = window.matchMedia('(hover: none)').matches
       ? 'Tap the map to send the robot somewhere.'
@@ -903,7 +1027,6 @@
       new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(canvas);
     }
     document.addEventListener('visibilitychange', sync);
-    reduceMotion.addEventListener('change', start);
 
     let resizeTimer;
     if ('ResizeObserver' in window) {
