@@ -519,8 +519,6 @@ p, li { text-wrap: pretty; }
 
 .about__portrait img {
   width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
   border-radius: 6px;
 }
 
